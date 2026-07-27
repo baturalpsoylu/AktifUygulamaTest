@@ -1,0 +1,6 @@
+bin/
+obj/
+takip.db
+rapor.html
+.vs/
+*.user
