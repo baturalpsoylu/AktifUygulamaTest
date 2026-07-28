@@ -4,32 +4,7 @@ using System.Linq;
 
 string dbPath = "Data Source=takip.db";
 
-string SureyiFormatla(int toplamSaniye)
-{
-    if (toplamSaniye < 60)
-    {
-        return toplamSaniye + " saniye";
-    }
 
-    int gun = toplamSaniye / 86400;
-    int kalanSaniye = toplamSaniye % 86400;
-    int saat = kalanSaniye / 3600;
-    kalanSaniye = kalanSaniye % 3600;
-    int dakika = kalanSaniye / 60;
-
-    if (gun > 0)
-    {
-        return gun + " gün " + saat + " saat";
-    }
-    else if (saat > 0)
-    {
-        return saat + " saat " + dakika + " dakika";
-    }
-    else
-    {
-        return dakika + " dakika";
-    }
-}
 
 using (var connection = new SqliteConnection(dbPath))
 {
@@ -222,7 +197,7 @@ void GunlukOzetGoster()
 
     Console.WriteLine("====================================");
     Console.WriteLine("BUGÜNKÜ ÖZET");
-    Console.WriteLine("Toplam süre: " + SureyiFormatla(toplamSaniye));
+    Console.WriteLine("Toplam süre: " + Yardimci.SureyiFormatla(toplamSaniye));
     Console.WriteLine();
     Console.WriteLine("En çok kullanılan 5 uygulama:");
 
@@ -241,7 +216,7 @@ void GunlukOzetGoster()
     {
         string app = reader.GetString(0);
         int saniye = reader.GetInt32(1);
-        Console.WriteLine(sira + ". " + app + " - " + SureyiFormatla(saniye));
+        Console.WriteLine(sira + ". " + app + " - " + Yardimci.SureyiFormatla(saniye));
         sira++;
     }
     Console.WriteLine("====================================");
@@ -270,7 +245,7 @@ void KategoriRaporuGoster()
     {
         string kategori = reader.GetString(0);
         int toplamSaniye = reader.GetInt32(1);
-        Console.WriteLine(kategori + ": " + SureyiFormatla(toplamSaniye));
+        Console.WriteLine(kategori + ": " + Yardimci.SureyiFormatla(toplamSaniye));
     }
     Console.WriteLine("--------------------------------------");
 }
@@ -296,7 +271,7 @@ void UygulamaRaporuGoster()
     {
         string app = reader.GetString(0);
         int toplamSaniye = reader.GetInt32(1);
-        Console.WriteLine(app + ": " + SureyiFormatla(toplamSaniye));
+        Console.WriteLine(app + ": " + Yardimci.SureyiFormatla(toplamSaniye));
     }
     Console.WriteLine("--------------------------------------");
 }
@@ -323,7 +298,7 @@ void SaatlikDagilimGoster()
     {
         string saat = reader.GetString(0);
         int toplamSaniye = reader.GetInt32(1);
-        Console.WriteLine(saat + ":00 - " + SureyiFormatla(toplamSaniye));
+        Console.WriteLine(saat + ":00 - " + Yardimci.SureyiFormatla(toplamSaniye));
     }
     Console.WriteLine("------------------------");
 }
