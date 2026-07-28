@@ -465,84 +465,17 @@ void HtmlRaporuOlustur(string baslangic, string bitis, string baslik)
     Console.WriteLine("HTML raporu oluşturuldu: rapor.html");
 }
 
+bool durduruldu = false;
 
-
-
-OturumlaraCevir();
-GunlukOzetGoster();
-KategoriRaporuGoster();
-UygulamaRaporuGoster();
-SaatlikDagilimGoster();
-
-string bugun = DateTime.UtcNow.AddHours(3).ToString("yyyy-MM-dd");
-HtmlRaporuOlustur(bugun, bugun, "Bugünkü Kullanım Raporu");
-
-Console.WriteLine();
-Console.WriteLine("Hangi aralığı görmek istersin?");
-Console.WriteLine("1) Bugün (varsayılan olarak zaten oluşturuldu)");
-Console.WriteLine("2) Bu hafta");
-Console.WriteLine("3) Bu ay");
-Console.WriteLine("4) Özel tarih aralığı");
-Console.WriteLine("5) Hayır, geç");
-Console.Write("Seçimin: ");
-
-string? secim = Console.ReadLine();
-
-if (secim == "2")
+Console.CancelKeyPress += (sender, e) =>
 {
-    string haftaBaslangic = DateTime.UtcNow.AddHours(3).AddDays(-7).ToString("yyyy-MM-dd");
-    HtmlRaporuOlustur(haftaBaslangic, bugun, "Son 7 Günlük Rapor");
-}
-else if (secim == "3")
-{
-    string ayBaslangic = DateTime.UtcNow.AddHours(3).AddMonths(-1).ToString("yyyy-MM-dd");
-    HtmlRaporuOlustur(ayBaslangic, bugun, "Son 30 Günlük Rapor");
-}
+    e.Cancel = true;  // Programın anında ölmesini engelle
+    durduruldu = true;
+};
 
+Console.WriteLine("Veri toplama başladı. Durdurmak için Ctrl+C'ye bas.");
 
-else if (secim == "4")
-{
-    while (true)
-    {
-        Console.Write("Başlangıç tarihi (YYYY-MM-DD, örn: 2026-07-01): ");
-        string girilenBaslangic = Console.ReadLine() ?? "";
-        Console.Write("Bitiş tarihi (YYYY-MM-DD, örn: 2026-07-23): ");
-        string girilenBitis = Console.ReadLine() ?? "";
-
-        
-        bool baslangicGecerli = DateTime.TryParseExact(girilenBaslangic, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime baslangicTarih);
-        bool bitisGecerli = DateTime.TryParseExact(girilenBitis, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime bitisTarih);
-
-        
-        if (!baslangicGecerli)
-            baslangicGecerli = DateTime.TryParse(girilenBaslangic, out baslangicTarih);
-        if (!bitisGecerli)
-            bitisGecerli = DateTime.TryParse(girilenBitis, out bitisTarih);
-
-        
-        if (!baslangicGecerli || !bitisGecerli)
-        {
-            Console.WriteLine("\n[X] Geçersiz bir tarih girdiniz! Lütfen YYYY-MM-DD formatında tekrar giriniz (Örn: 2026-07-15).\n");
-            continue; 
-        }
-
-        
-        if (baslangicTarih > bitisTarih)
-        {
-            Console.WriteLine("\n[X] Başlangıç tarihi, bitiş tarihinden sonra olamaz! Lütfen tekrar giriniz.\n");
-            continue; 
-        }
-
-        
-        string ozelBaslangic = baslangicTarih.ToString("yyyy-MM-dd");
-        string ozelBitis = bitisTarih.ToString("yyyy-MM-dd");
-
-        HtmlRaporuOlustur(ozelBaslangic, ozelBitis, ozelBaslangic + " - " + ozelBitis + " Arası Rapor");
-        break; 
-    }
-}
-
-while (true)
+while (!durduruldu)
 {
     var psi = new ProcessStartInfo();
     psi.FileName = "osascript";
@@ -586,5 +519,79 @@ while (true)
 
     Console.WriteLine("Kaydedildi: " + output + " - " + DateTime.Now);
 
-    Thread.Sleep(2000);
+    if (!durduruldu)
+    {
+        Thread.Sleep(2000);
+    }
 }
+
+Console.WriteLine();
+Console.WriteLine("Veri toplama durduruldu. Rapor hazırlanıyor...");
+
+OturumlaraCevir();
+GunlukOzetGoster();
+KategoriRaporuGoster();
+UygulamaRaporuGoster();
+SaatlikDagilimGoster();
+
+string bugun = DateTime.UtcNow.AddHours(3).ToString("yyyy-MM-dd");
+HtmlRaporuOlustur(bugun, bugun, "Bugünkü Kullanım Raporu");
+
+Console.WriteLine();
+Console.WriteLine("Hangi aralığı görmek istersin?");
+Console.WriteLine("1) Bugün (varsayılan olarak zaten oluşturuldu)");
+Console.WriteLine("2) Bu hafta");
+Console.WriteLine("3) Bu ay");
+Console.WriteLine("4) Özel tarih aralığı");
+Console.WriteLine("5) Hayır, geç");
+Console.Write("Seçimin: ");
+
+string? secim = Console.ReadLine();
+
+if (secim == "2")
+{
+    string haftaBaslangic = DateTime.UtcNow.AddHours(3).AddDays(-7).ToString("yyyy-MM-dd");
+    HtmlRaporuOlustur(haftaBaslangic, bugun, "Son 7 Günlük Rapor");
+}
+else if (secim == "3")
+{
+    string ayBaslangic = DateTime.UtcNow.AddHours(3).AddMonths(-1).ToString("yyyy-MM-dd");
+    HtmlRaporuOlustur(ayBaslangic, bugun, "Son 30 Günlük Rapor");
+}
+else if (secim == "4")
+{
+    while (true)
+    {
+        Console.Write("Başlangıç tarihi (YYYY-MM-DD, örn: 2026-07-01): ");
+        string girilenBaslangic = Console.ReadLine() ?? "";
+        Console.Write("Bitiş tarihi (YYYY-MM-DD, örn: 2026-07-23): ");
+        string girilenBitis = Console.ReadLine() ?? "";
+
+        bool baslangicGecerli = DateTime.TryParseExact(girilenBaslangic, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime baslangicTarih);
+        bool bitisGecerli = DateTime.TryParseExact(girilenBitis, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime bitisTarih);
+
+        if (!baslangicGecerli)
+            baslangicGecerli = DateTime.TryParse(girilenBaslangic, out baslangicTarih);
+        if (!bitisGecerli)
+            bitisGecerli = DateTime.TryParse(girilenBitis, out bitisTarih);
+
+        if (!baslangicGecerli || !bitisGecerli)
+        {
+            Console.WriteLine("\n[X] Geçersiz bir tarih girdiniz! Lütfen YYYY-MM-DD formatında tekrar giriniz (Örn: 2026-07-15).\n");
+            continue;
+        }
+
+        if (baslangicTarih > bitisTarih)
+        {
+            Console.WriteLine("\n[X] Başlangıç tarihi, bitiş tarihinden sonra olamaz! Lütfen tekrar giriniz.\n");
+            continue;
+        }
+
+        string ozelBaslangic = baslangicTarih.ToString("yyyy-MM-dd");
+        string ozelBitis = bitisTarih.ToString("yyyy-MM-dd");
+
+        HtmlRaporuOlustur(ozelBaslangic, ozelBitis, ozelBaslangic + " - " + ozelBitis + " Arası Rapor");
+        break;
+    }
+}
+
