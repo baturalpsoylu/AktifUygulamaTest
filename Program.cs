@@ -469,7 +469,7 @@ bool durduruldu = false;
 
 Console.CancelKeyPress += (sender, e) =>
 {
-    e.Cancel = true;  // Programın anında ölmesini engelle
+    e.Cancel = true;  
     durduruldu = true;
 };
 
