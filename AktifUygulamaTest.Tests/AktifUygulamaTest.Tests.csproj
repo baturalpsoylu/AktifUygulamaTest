@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AktifUygulamaTest\AktifUygulamaTest.csproj" />
+    <ProjectReference Include="..\AktifUygulamaTest.csproj" />
   </ItemGroup>
 
 </Project>
