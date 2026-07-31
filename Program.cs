@@ -465,6 +465,116 @@ void HtmlRaporuOlustur(string baslangic, string bitis, string baslik)
     Console.WriteLine("HTML raporu oluşturuldu: rapor.html");
 }
 
+string SureyiCsvFormatla(int toplamSaniye)
+{
+    if (toplamSaniye < 60)
+    {
+        return toplamSaniye + " saniye";
+    }
+
+    int gun = toplamSaniye / 86400;
+    int kalan = toplamSaniye % 86400;
+    int saat = kalan / 3600;
+    kalan = kalan % 3600;
+    int dakika = kalan / 60;
+
+    if (gun > 0)
+    {
+        return gun + " gün, " + saat + " saat";
+    }
+    else if (saat > 0)
+    {
+        return saat + " saat, " + dakika + " dakika";
+    }
+    else
+    {
+        return dakika + " dakika";
+    }
+}
+
+
+void CsvOlarakDisaAktar(string baslangic, string bitis)
+{
+    using var connection = new SqliteConnection(dbPath);
+    connection.Open();
+
+    // DOSYA 1: Tüm oturumların detaylı listesi
+    var detayliSatirlar = new List<string>();
+    detayliSatirlar.Add("Uygulama,Kategori,Baslangic,Bitis,Sure");
+
+    var cmd = connection.CreateCommand();
+    cmd.CommandText = @"
+        SELECT s.app_name, COALESCE(c.name, 'Diğer') AS kategori,
+               strftime('%Y-%m-%d %H:%M', s.start_at, '+3 hours') AS baslangic_formatli,
+               strftime('%Y-%m-%d %H:%M', s.end_at, '+3 hours') AS bitis_formatli,
+               s.duration_sec
+        FROM session s
+        LEFT JOIN app a ON a.name = s.app_name
+        LEFT JOIN category c ON c.id = a.category_id
+        WHERE date(s.start_at, '+3 hours') >= date($baslangic)
+          AND date(s.start_at, '+3 hours') <= date($bitis)
+          AND s.app_name != 'Bilgisayar boşta'
+        ORDER BY s.start_at;
+    ";
+    cmd.Parameters.AddWithValue("$baslangic", baslangic);
+    cmd.Parameters.AddWithValue("$bitis", bitis);
+
+    var reader = cmd.ExecuteReader();
+    while (reader.Read())
+    {
+        string app = reader.GetString(0);
+        string kategori = reader.GetString(1);
+        string start = reader.GetString(2);
+        string end = reader.GetString(3);
+        int sureSaniye = reader.GetInt32(4);
+        string sureMetni = SureyiCsvFormatla(sureSaniye);
+
+        detayliSatirlar.Add(app + "," + kategori + "," + start + "," + end + "," + sureMetni);
+    }
+    reader.Close();
+
+    string detayliDosyaAdi = "rapor_detay_" + baslangic + "_" + bitis + ".csv";
+    File.WriteAllLines(detayliDosyaAdi, detayliSatirlar);
+
+    // DOSYA 2: Uygulama + gün bazında toplam kullanım (özet)
+    var ozetSatirlar = new List<string>();
+    ozetSatirlar.Add("Uygulama,Tarih,ToplamSure");
+
+    var ozetCmd = connection.CreateCommand();
+    ozetCmd.CommandText = @"
+        SELECT s.app_name,
+               strftime('%Y-%m-%d', s.start_at, '+3 hours') AS gun,
+               SUM(s.duration_sec) AS toplam
+        FROM session s
+        WHERE date(s.start_at, '+3 hours') >= date($baslangic)
+          AND date(s.start_at, '+3 hours') <= date($bitis)
+          AND s.app_name != 'Bilgisayar boşta'
+        GROUP BY s.app_name, gun
+        ORDER BY toplam DESC;
+    ";
+    ozetCmd.Parameters.AddWithValue("$baslangic", baslangic);
+    ozetCmd.Parameters.AddWithValue("$bitis", bitis);
+
+    var ozetReader = ozetCmd.ExecuteReader();
+    while (ozetReader.Read())
+    {
+        string app = ozetReader.GetString(0);
+        string gun = ozetReader.GetString(1);
+        int toplamSaniye = ozetReader.GetInt32(2);
+        string toplamMetni = SureyiCsvFormatla(toplamSaniye);
+
+        ozetSatirlar.Add(app + "," + gun + "," + toplamMetni);
+    }
+    ozetReader.Close();
+
+    string ozetDosyaAdi = "rapor_ozet_" + baslangic + "_" + bitis + ".csv";
+    File.WriteAllLines(ozetDosyaAdi, ozetSatirlar);
+
+    Console.WriteLine("CSV dosyaları oluşturuldu:");
+    Console.WriteLine("  - " + detayliDosyaAdi + " (tüm oturumlar)");
+    Console.WriteLine("  - " + ozetDosyaAdi + " (uygulamayı toplamda ne kadar kullandın raporu)");
+}
+
 bool durduruldu = false;
 
 Console.CancelKeyPress += (sender, e) =>
@@ -543,10 +653,20 @@ Console.WriteLine("1) Bugün (varsayılan olarak zaten oluşturuldu)");
 Console.WriteLine("2) Bu hafta");
 Console.WriteLine("3) Bu ay");
 Console.WriteLine("4) Özel tarih aralığı");
-Console.WriteLine("5) Hayır, geç");
-Console.Write("Seçimin: ");
+Console.WriteLine("5) Veriyi CSV olarak dışa aktar");
+Console.WriteLine("6) Hayır, geç");
 
-string? secim = Console.ReadLine();
+string? secim;
+while (true)
+{
+    Console.Write("Seçimin: ");
+    secim = Console.ReadLine();
+    if (secim == "1" || secim == "2" || secim == "3" || secim == "4" || secim == "5" || secim == "6")
+    {
+        break;
+    }
+    Console.WriteLine("Yanlış girdiniz. Lütfen 1 ile 6 arasında bir sayı girin.");
+}
 
 if (secim == "2")
 {
@@ -592,6 +712,70 @@ else if (secim == "4")
 
         HtmlRaporuOlustur(ozelBaslangic, ozelBitis, ozelBaslangic + " - " + ozelBitis + " Arası Rapor");
         break;
+    }
+}
+else if (secim == "5")
+{
+    Console.WriteLine();
+    Console.WriteLine("CSV için hangi tarih aralığını istersin?");
+    Console.WriteLine("1) Bugün");
+    Console.WriteLine("2) Bu hafta");
+    Console.WriteLine("3) Bu ay");
+    Console.WriteLine("4) Özel tarih aralığı");
+
+    string? csvSecim;
+while (true)
+{
+    Console.Write("Seçimin: ");
+    csvSecim = Console.ReadLine();
+    if (csvSecim == "1" || csvSecim == "2" || csvSecim == "3" || csvSecim == "4")
+    {
+        break;
+    }
+    Console.WriteLine("Yanlış girdiniz. Lütfen 1 ile 4 arasında bir sayı girin.");
+}
+
+    if (csvSecim == "1")
+    {
+        CsvOlarakDisaAktar(bugun, bugun);
+    }
+    else if (csvSecim == "2")
+    {
+        string haftaBaslangic = DateTime.UtcNow.AddHours(3).AddDays(-7).ToString("yyyy-MM-dd");
+        CsvOlarakDisaAktar(haftaBaslangic, bugun);
+    }
+    else if (csvSecim == "3")
+    {
+        string ayBaslangic = DateTime.UtcNow.AddHours(3).AddMonths(-1).ToString("yyyy-MM-dd");
+        CsvOlarakDisaAktar(ayBaslangic, bugun);
+    }
+    else if (csvSecim == "4")
+    {
+        while (true)
+        {
+            Console.Write("Başlangıç tarihi (YYYY-MM-DD): ");
+            string girilenBaslangic = Console.ReadLine() ?? "";
+            Console.Write("Bitiş tarihi (YYYY-MM-DD): ");
+            string girilenBitis = Console.ReadLine() ?? "";
+
+            bool baslangicGecerli = DateTime.TryParseExact(girilenBaslangic, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime csvBaslangicTarih);
+            bool bitisGecerli = DateTime.TryParseExact(girilenBitis, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime csvBitisTarih);
+
+            if (!baslangicGecerli || !bitisGecerli)
+            {
+                Console.WriteLine("\n[X] Geçersiz tarih formatı! Tekrar deneyin.\n");
+                continue;
+            }
+
+            if (csvBaslangicTarih > csvBitisTarih)
+            {
+                Console.WriteLine("\n[X] Başlangıç, bitişten sonra olamaz! Tekrar deneyin.\n");
+                continue;
+            }
+
+            CsvOlarakDisaAktar(csvBaslangicTarih.ToString("yyyy-MM-dd"), csvBitisTarih.ToString("yyyy-MM-dd"));
+            break;
+        }
     }
 }
 
